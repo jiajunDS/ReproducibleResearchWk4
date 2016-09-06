@@ -1,0 +1,195 @@
+---
+title: "Studies on effect of weather events on human fatalities and property damages in US based on NOAA database"
+output:
+html_document:
+    keep_md: true
+---
+### Author: Jia Jun
+
+## 1. Synopsis
+Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. Many severe events can result in fatalities, injuries and property damage. Preventing such outcomes as much as possible is a key concern.
+
+This project involves exploring U.S. National Oceanic and Atmospheric Administration’s (NOAA) storm database. This database tracks characteristics of major storms and weather events in United States, including when and where they occur, as well as estimates of any fatalities, injuries and property damage.
+
+In this report, effect of weather events on human fatalities and property damages are studied. Barplots were plotted separately for top 10 weather events that causes highest fatalities and highest injuries. Results show that most fatalities and injuries were caused by Tornados. Barplots are also plotted for top 8 weather events that causes highest property damage and crop damage.
+
+## 2. Data Processing
+### 2.1 Data
+
+Data for this assignment come in form of a comma-separated-value file compressed via bzip2 algorithm to reduce its size. You can download the file from course web site:
+
+* [Storm Data [47Mb]](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2)
+
+There is also some documentation of database available. Here you will find how some of the variables are constructed/defined.
+
+* National Weather Service [Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf)
+
+* National Climatic Data Center Storm Events [FAQ](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf)
+
+Events in database start in year 1950 and end in November 2011. In earlier years of database there are generally fewer events recorded, most likely due to a lack of good records. More recent years should be considered more complete.
+
+## 2.2 Assignment
+
+Basic goal of this assignment is to explore NOAA Storm Database and answer following basic questions about severe weather events.
+
+1. Across United States, which types of events (as indicated in EVTYPE variable) are most harmful with respect to population health?
+
+2. Across United States, which types of events have greatest economic consequences?
+
+## 2.3 Process
+### 2.3.1 Loading data
+
+Data was downloaded from above mentioned website and saved on local computer. Then it was loaded on R using the code below.
+
+```{r}
+# Loading data into R
+storm <- read.csv("repdata%2Fdata%2FStormData.csv")
+head(storm)
+```
+
+## 2.3.2 Extracting required data
+
+This dataset consists of lot of information most of which is not required for our study. The below code will extract the required data for health and economic impact analysis against weather.
+
+```{r}
+# Extract required data for health and economic impact analysis against weather
+
+event <- c("EVTYPE", "FATALITIES", "INJURIES", "PROPDMG", "PROPDMGEXP", "CROPDMG", "CROPDMGEXP")
+data <- storm[event]
+```
+
+## 2.3.3 Find property damage
+
+Property damage exponents for each level was listed out and assigned those values for property exponent data. Invalid data was excluded by assigning a '0' value. Property damage value is then calculated by multiplying property damage and property exponent value. Code for this process is shown below.
+
+```{r}
+# Find property damage exponent and levels
+unique(data$PROPDMGEXP)
+```
+
+```{r}
+# Assign values for property exponent data 
+data$PROPEXP[data$PROPDMGEXP == "K"] <- 1000
+data$PROPEXP[data$PROPDMGEXP == "M"] <- 1e+06
+data$PROPEXP[data$PROPDMGEXP == ""] <- 1
+data$PROPEXP[data$PROPDMGEXP == "B"] <- 1e+09
+data$PROPEXP[data$PROPDMGEXP == "m"] <- 1e+06
+data$PROPEXP[data$PROPDMGEXP == "0"] <- 1
+data$PROPEXP[data$PROPDMGEXP == "5"] <- 1e+05
+data$PROPEXP[data$PROPDMGEXP == "6"] <- 1e+06
+data$PROPEXP[data$PROPDMGEXP == "4"] <- 10000
+data$PROPEXP[data$PROPDMGEXP == "2"] <- 100
+data$PROPEXP[data$PROPDMGEXP == "3"] <- 1000
+data$PROPEXP[data$PROPDMGEXP == "h"] <- 100
+data$PROPEXP[data$PROPDMGEXP == "7"] <- 1e+07
+data$PROPEXP[data$PROPDMGEXP == "H"] <- 100
+data$PROPEXP[data$PROPDMGEXP == "1"] <- 10
+data$PROPEXP[data$PROPDMGEXP == "8"] <- 1e+08
+# Assign '0' to invalid exponent data
+data$PROPEXP[data$PROPDMGEXP == "+"] <- 0
+data$PROPEXP[data$PROPDMGEXP == "-"] <- 0
+data$PROPEXP[data$PROPDMGEXP == "?"] <- 0
+# Calculate property damage value
+data$PROPDMGVAL <- data$PROPDMG * data$PROPEXP
+```
+
+## 2.3.4 Find crop damage
+
+Crop damage exponents for each level is shown and we assign those values for crop exponent data. Invalid data is excluded by assigning a '0' value. Crop damage value is calculated by multiplying crop damage and crop exponent value. Code for this process is shown below.
+
+```{r}
+# View crop exponent data
+unique(data$CROPDMGEXP)
+```
+
+```{r}
+# Assigning values for crop exponent data 
+data$CROPEXP[data$CROPDMGEXP == "M"] <- 1e+06
+data$CROPEXP[data$CROPDMGEXP == "K"] <- 1000
+data$CROPEXP[data$CROPDMGEXP == "m"] <- 1e+06
+data$CROPEXP[data$CROPDMGEXP == "B"] <- 1e+09
+data$CROPEXP[data$CROPDMGEXP == "0"] <- 1
+data$CROPEXP[data$CROPDMGEXP == "k"] <- 1000
+data$CROPEXP[data$CROPDMGEXP == "2"] <- 100
+data$CROPEXP[data$CROPDMGEXP == ""] <- 1
+# Assigning '0' to invalid exponent data
+data$CROPEXP[data$CROPDMGEXP == "?"] <- 0
+# calculating crop damage value
+data$CROPDMGVAL <- data$CROPDMG * data$CROPEXP
+```
+
+## 2.3.5 Find total of each incident by event type
+
+We can see that "most harmful to population health" events are fatalities and injuries. Hence only events with fatalities and injuries are selected.
+
+We can see that "most harmful to econamic problem" events are Property and crop damages. Hence only those events with property and crop damage are selected.
+
+For each incident (Fatalities, Injuries, Property damage, Crop damage), total values are estimated. Code is shown below.
+
+```{r}
+# Totalling data by event
+cropdmg <- aggregate(CROPDMGVAL ~ EVTYPE, data, FUN = sum)
+fatal <- aggregate(FATALITIES ~ EVTYPE, data, FUN = sum)
+injury <- aggregate(INJURIES ~ EVTYPE, data, FUN = sum)
+propdmg <- aggregate(PROPDMGVAL ~ EVTYPE, data, FUN = sum)
+```
+
+## 2.3.6 Plot events with highest fatalities and highest injuries
+
+Highest fatalities and highest injuries for top 10 events were calculated.
+
+```{r}
+# Listing  events with highest fatalities
+fataltop10 <- fatal[order(-fatal$FATALITIES), ][1:10, ]
+# Listing events with highest injuries
+injurytop10 <- injury[order(-injury$INJURIES), ][1:10, ]
+par(mfrow = c(1, 2), cex = 0.8, mar = c(12, 4, 3, 2), mgp = c(3, 1, 0))
+barplot(fataltop10$FATALITIES, las = 3, names.arg = fataltop10$EVTYPE, main = "Highest Fatalities Events", 
+        ylab = "Number of fatalities", col = "light green")
+barplot(injurytop10$INJURIES, las = 3, names.arg = injurytop10$EVTYPE, main = "Highest Injuries Events", 
+        ylab = "Number of injuries", col = "light green")
+```
+
+## 2.3.7 Plot events with highest property damage and highest crop damage
+
+Highest property damage and highest crop damage for top 10 events were calculated.
+
+```{r}
+# Find events with highest property damage
+propdmgtop10 <- propdmg[order(-propdmg$PROPDMGVAL), ][1:10, ]
+# Find events with highest crop damage
+cropdmgtop10 <- cropdmg[order(-cropdmg$CROPDMGVAL), ][1:10, ]
+par(mfrow = c(1, 2), cex = 0.8, mar = c(12, 4, 3, 2), mgp = c(3, 1, 0))
+barplot(propdmgtop10$PROPDMGVAL/(10^9), las = 3, names.arg = propdmgtop10$EVTYPE, 
+        main = "Highest Property Damages Events", ylab = "Damage Cost ($ billions)", 
+        col = "light green")
+barplot(cropdmgtop10$CROPDMGVAL/(10^9), las = 3, names.arg = cropdmgtop10$EVTYPE, 
+        main = "Highest Crop Damages Events", ylab = "Damage Cost ($ billions)", 
+        col = "light green")
+```
+
+## 3. Results and Conclusions
+Tornados caused the highest number of fatalities and injuries.
+
+It was followed by Excessive Heat for fatalities and Thunderstorm Wind for injuries.
+
+Floods caused the maximum property damage.
+
+Drought caused the maximum crop damage.
+
+Hurricanes/Typhoons is the second event that caused the most property damage.
+
+Floods is the second event that caused the most crop damage.
+
+
+
+
+
+
+
+
+
+
+
+
+
